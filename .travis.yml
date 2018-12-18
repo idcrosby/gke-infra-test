@@ -13,20 +13,26 @@ env:
 before_install:
 - openssl aes-256-cbc -K $encrypted_e519d698ecaa_key -iv $encrypted_e519d698ecaa_iv
   -in client-secret.json.enc -out client-secret.json -d
-- openssl aes-256-cbc -K $encrypted_92b93fb23917_key -iv $encrypted_92b93fb23917_iv
-  -in semi-186012-d811e69bf044.json.enc -out semi-secret.json -d
-- curl https://sdk.cloud.google.com | bash;
-- gcloud components update kubectl
+# Install GCloud SDK
+- gcloud version || true
+- if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; export CLOUDSDK_CORE_DISABLE_PROMPTS=1; curl https://sdk.cloud.google.com | bash; fi
+# Add gcloud to $PATH
+- source /home/travis/google-cloud-sdk/path.bash.inc
+- gcloud version
+
+- gcloud components update kubectl --quiet
 - gcloud auth activate-service-account --key-file "${GOOGLE_APPLICATION_CREDENTIALS}"
 - gcloud config set project $PROJECT_ID
 - gcloud config set compute/zone $ZONE
-- if ! terraform version ; then mkdir -p "${HOME}/bin" pushd "/tmp" ; curl -sSL -o
-  terraform.zip "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
-  ; unzip terraform.zip ; mv -v terraform "${HOME}/bin/terraform" ; chmod +x "${HOME}/bin/terraform"
-  ; popd ; terraform version ; fi
+
+# Install Terraform
+- curl -sLo /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+- unzip /tmp/terraform.zip -d /tmp
+- mv /tmp/terraform ~/bin/
+- export PATH="~/bin:$PATH"
+
 install: true
 script:
-- cd terraform/
-- terraform init
-- terraform plan
-- terraform apply -auto-approve
+- terraform init ./terraform
+- terraform plan ./terraform
+- terraform apply -auto-approve ./terraform
