@@ -1,0 +1,32 @@
+sudo: required
+language: java
+jdk:
+- oraclejdk8
+services:
+- docker
+env:
+  global:
+  - GOOGLE_APPLICATION_CREDENTIALS="${PWD}/client-secret.json"
+  - PROJECT_ID="semi-weaviate-infra"
+  - ZONE="us-east1-b"
+  - TF_VERSION="0.11.0"
+before_install:
+- openssl aes-256-cbc -K $encrypted_e519d698ecaa_key -iv $encrypted_e519d698ecaa_iv
+  -in client-secret.json.enc -out client-secret.json -d
+- openssl aes-256-cbc -K $encrypted_92b93fb23917_key -iv $encrypted_92b93fb23917_iv
+  -in semi-186012-d811e69bf044.json.enc -out semi-secret.json -d
+- curl https://sdk.cloud.google.com | bash;
+- gcloud components update kubectl
+- gcloud auth activate-service-account --key-file "${GOOGLE_APPLICATION_CREDENTIALS}"
+- gcloud config set project $PROJECT_ID
+- gcloud config set compute/zone $ZONE
+- if ! terraform version ; then mkdir -p "${HOME}/bin" pushd "/tmp" ; curl -sSL -o
+  terraform.zip "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+  ; unzip terraform.zip ; mv -v terraform "${HOME}/bin/terraform" ; chmod +x "${HOME}/bin/terraform"
+  ; popd ; terraform version ; fi
+install: true
+script:
+- cd terraform/
+- terraform init
+- terraform plan
+- terraform apply -auto-approve
